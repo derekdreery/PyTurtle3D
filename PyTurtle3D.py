@@ -3,40 +3,98 @@ from pyglet.window import key
 from pyglet.gl import *
 from math import sin, cos, pi, radians
 
+def vec(*args):
+    return (GLfloat * len(args))(*args)
+
 class vector3(object):
     """A class to handle vectors in 3 space, can handle rotated
        co-ordinates"""
     
-    def __init__(self, x=0, y=0, z=0, rot_x=0, rot_y=0):
+    def __init__(self, x=0, y=0, z=0, rot_x=0, rot_y=90):
         self.x = x
         self.y = y
         self.z = z
-        self.rot_x = rot_x
-        self.rot_y = rot_y
+        self.rot_x = rot_x % 360
+        self.rot_y = rot_y % 180 - 90
 
     def move(self, x, y, z):
         self.x += (x * cos(radians(self.rot_x)) - z * sin(radians(self.rot_x))) * cos(radians(self.rot_y))
         self.z += (z * cos(radians(self.rot_x)) + x * sin(radians(self.rot_x))) * cos(radians(self.rot_y))
-        self.y += -z * sin(radians(self.rot_y))
+        self.y += -z * sin(radians(self.rot_y)) - y * cos(radians(self.rot_y))
 
     def rotate(self, x, y):
         self.rot_x += x
         self.rot_x %= 360
-        self.rot_y += y
-        self.rot_y %= 360
+        if y + self.rot_y <= 90 and y + self.rot_y >= -90:
+            self.rot_y += y
 
 
 window = pyglet.window.Window()
 #window.push_handlers(pyglet.window.event.WindowEventLogger())
-fps_display = pyglet.clock.ClockDisplay()
+
+class Cube(object):
+
+    def __init__(self, x=0, y=0, z=0, color=(1.,1.,1.)):
+        self.vertex_list = pyglet.graphics.vertex_list(24,
+                       ('v3f', (x+1,y+1,z-1,
+                                x-1,y+1,z-1,
+                                x-1,y+1,z+1,
+                                x+1,y+1,z+1,
+
+                                x+1,y-1,z+1,
+                                x-1,y-1,z+1,
+                                x-1,y-1,z-1,
+                                x+1,y-1,z-1,
+                                
+                                x+1,y+1,z+1,
+                                x-1,y+1,z+1,
+                                x-1,y-1,z+1,
+                                x+1,y-1,z+1,
+                                
+                                x+1,y-1,z-1,
+                                x-1,y-1,z-1,
+                                x-1,y+1,z-1,
+                                x+1,y+1,z-1,
+                                
+                                x-1,y+1,z+1,
+                                x-1,y+1,z-1,
+                                x-1,y-1,z-1,
+                                x-1,y-1,z+1,
+                                
+                                x+1,y+1,z-1,
+                                x+1,y+1,z+1,
+                                x+1,y-1,z+1,
+                                x+1,y-1,z-1
+                                )),
+                       ('c3f', color*24),
+                       ('n3f', (0,1,0)*4 + \
+                               (0,-1,0)*4 + \
+                               (0,0,1)*4 + \
+                               (0,0,-1)*4 + \
+                               (1,0,0)*4 + \
+                               (-1,0,0)*4))
+                                
 
 
 pos = vector3(0, 0, 0)
 vel = vector3(0, 0, 0)
 speed = 1
+up = 0
 
+cubes = []
 
+for i in range(7):
+    for j in range(7):
+        for k in range(7):
+            cubes.append(Cube(i*4, j*4, k*4, (i/7., j/7., k/7.)))
+
+glShadeModel(GL_SMOOTH)
 glEnable(GL_DEPTH_TEST)
+glEnable(GL_LIGHTING)
+glEnable(GL_LIGHT0)
+glEnable(GL_COLOR_MATERIAL)
+
+glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE)
 
 @window.event
 def on_resize(width, height):
@@ -58,46 +116,19 @@ def on_draw():
     glRotatef(pos.rot_x, 0, 1, 0)
     glTranslatef(pos.x, pos.y, pos.z - 5)
     
-    for i in range(0, 20, 3):
-        for j in range(0, 20, 3):
-            glBegin(GL_QUADS);                	# Draw A Quad
-            glColor3f(0.0,1.0,0.0);            # Set The Color To Green
-            glVertex3f( j+1.0, i+1.0,-1.0);        	# Top Right Of The Quad (Top)
-            glVertex3f(j-1.0, i+1.0,-1.0);        	# Top Left Of The Quad (Top)
-            glVertex3f(j-1.0, i+1.0, 1.0);        	# Bottom Left Of The Quad (Top)
-            glVertex3f( j+1.0, i+1.0, 1.0);        	# Bottom Right Of The Quad (Top)
-            glColor3f(1.0,0.5,0.0);            # Set The Color To Orange
-            glVertex3f( j+1.0,i-1.0, 1.0);        	# Top Right Of The Quad (Bottom)
-            glVertex3f(j-1.0,i-1.0, 1.0);        	# Top Left Of The Quad (Bottom)
-            glVertex3f(j-1.0,i-1.0,-1.0);        	# Bottom Left Of The Quad (Bottom)
-            glVertex3f( j+1.0,i-1.0,-1.0);        	# Bottom Right Of The Quad (Bottom)
-            glColor3f(1.0,0.0,0.0);            # Set The Color To Red
-            glVertex3f( j+1.0,i+1.0, 1.0);        	# Top Right Of The Quad (Front)
-            glVertex3f(j-1.0,i+1.0, 1.0);        	# Top Left Of The Quad (Front)
-            glVertex3f(j-1.0,i-1.0, 1.0);        	# Bottom Left Of The Quad (Front)
-            glVertex3f( j+1.0,i-1.0, 1.0);        	# Bottom Right Of The Quad (Front)
-            glColor3f(1.0,1.0,0.0);            # Set The Color To Yellow
-            glVertex3f( j+1.0,i-1.0,-1.0);        	# Top Right Of The Quad (Back)
-            glVertex3f(j-1.0,i-1.0,-1.0);        	# Top Left Of The Quad (Back)
-            glVertex3f(j-1.0, i+1.0,-1.0);        	# Bottom Left Of The Quad (Back)
-            glVertex3f( j+1.0, i+1.0,-1.0);        	# Bottom Right Of The Quad (Back)
-            glColor3f(0.0,0.0,1.0);            # Set The Color To Blue
-            glVertex3f(j-1.0, i+1.0, 1.0);        	# Top Right Of The Quad (Left)
-            glVertex3f(j-1.0, i+1.0,-1.0);        	# Top Left Of The Quad (Left)
-            glVertex3f(j-1.0,i-1.0,-1.0);        	# Bottom Left Of The Quad (Left)
-            glVertex3f(j-1.0,i-1.0, 1.0);        	# Bottom Right Of The Quad (Left)
-            glColor3f(1.0,0.0,1.0);            # Set The Color To Violet
-            glVertex3f( j+1.0, i+1.0,-1.0);        	# Top Right Of The Quad (Right)
-            glVertex3f( j+1.0, i+1.0, 1.0);        	# Top Left Of The Quad (Right)
-            glVertex3f( j+1.0,i-1.0, 1.0);        	# Bottom Left Of The Quad (Right)
-            glVertex3f( j+1.0,i-1.0,-1.0);        	# Bottom Right Of The Quad (Right)
-            glEnd();
-	
-    fps_display.draw()
+    glLightfv(GL_LIGHT0, GL_POSITION, vec(1,5,-20,0))
+    glLightfv(GL_LIGHT0, GL_SPECULAR, vec(1,1,1,1))
+    glLightfv(GL_LIGHT0, GL_AMBIENT, vec(0.0,0.0,0.0,1))
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(0.5,0.5,0.5,1))
+    
+    #glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, vec(0,0,1,1))
+
+    for cube in cubes:
+        cube.vertex_list.draw(GL_QUADS)
 
 @window.event
 def on_key_press(symbol, modifiers):
-    global speed
+    global speed, up
     if symbol == key.W:
         vel.z += 1
     if symbol == key.A:
@@ -106,6 +137,8 @@ def on_key_press(symbol, modifiers):
         vel.z -= 1
     if symbol == key.D:
         vel.x -= 1
+    if symbol == key.SPACE:
+        up += 1
     if symbol == key.LSHIFT:
         speed *= 10
     if symbol == key.F:
@@ -113,7 +146,7 @@ def on_key_press(symbol, modifiers):
 
 @window.event
 def on_key_release(symbol, modifiers):
-    global speed
+    global speed, up
     if symbol == key.W:
         vel.z -= 1
     if symbol == key.A:
@@ -122,6 +155,8 @@ def on_key_release(symbol, modifiers):
         vel.z += 1
     if symbol == key.D:
         vel.x += 1
+    if symbol == key.SPACE:
+        up -= 1
     if symbol == key.LSHIFT:
         speed /= 10
 
@@ -140,11 +175,9 @@ def on_mouse_release(x, y, button, modifiers):
         window.set_exclusive_mouse(False)
 
 def update_camera(dt):
-    global speed
+    global speed, up
     pos.move(vel.x*dt*speed, vel.y*dt*speed, vel.z*dt*speed)
-    #pos.x += vel.x * dt * speed
-    #pos.y += vel.y * dt * speed
-    #pos.z += vel.z * dt * speed
+    pos.y -= up*dt*speed
     print("(%f, %f, %f), (%f, %f)" % (pos.x, pos.y, pos.z, pos.rot_x, pos.rot_y))
         
 pyglet.clock.schedule_interval(update_camera, 1/60.)
